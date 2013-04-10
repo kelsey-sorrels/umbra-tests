@@ -3,14 +3,19 @@ import random
 import itertools
 import time
 import collections
+import csv
 
 class Planet:
-    def __init__(self, name, produceEnergy, produceMinerals, produceInfluence, buildShips):
+    def __init__(self, name, produceEnergy, produceMinerals, produceInfluence, buildShips,
+            invadeEnergy, invadeMinerals, invadeInfluence):
         self.produceEnergy = produceEnergy
         self.produceMinerals = produceMinerals
         self.produceInfluence = produceInfluence
         self.ships = {}
         self.buildShips = buildShips
+        self.invadeEnergy = invadeEnergy
+        self.invadeMinerals = invadeMinerals
+        self.invadeInfluence = invadeInfluence
 
 class Space:
     def __init__(self, numPlanets):
@@ -155,7 +160,6 @@ class Game:
         self.playerOrder = itertools.cycle(self.players)
         self.board = Board(len(self.players))
         self.logRecord = []
-        self.testRounds = 5
 
     def initActionCards(self):
         return collections.deque([ActionCards.EXPLORE, ActionCards.MOVE_ATTACK, ActionCards.MOVE_ATTACK, ActionCards.INVADE,
@@ -165,7 +169,14 @@ class Game:
                 ActionCards.POLITICS, ActionCards.CORRUPTION])
 
     def initPlanetCards(self):
-        return []
+        planets = []
+        with open('data/planets.csv', 'rb') as csvfile:
+            reader = csv.reader(csvfile)
+            headerline = reader.next()
+            for row in reader:
+                #name, produceEnergy, produceMinerals, produceInfluence, buildShips, invadeEnergy, invadeMinerals, invadeInfluence
+                planets.append(Planet(row[0], row[5], row[6], row[7], row[8], row[1], row[2], row[3]))
+        return planets
 
     def initTechnologyCards(self):
         return []
@@ -202,7 +213,7 @@ class Game:
 
             self.log('action queues: %s' % str([self.players[i].getActionQueue() for i in range(len(self.players))]))
         for player in self.players:
-            player.tick()
+            player.tick(self)
 
 def runGame():
     ticks = 0
