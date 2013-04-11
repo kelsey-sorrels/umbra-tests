@@ -20,9 +20,30 @@ class Planet:
 class Space:
     def __init__(self, numPlanets):
         self.numPlanets = numPlanets
+        self.ships = {}
 
     def getNumPlanets(self):
         return self.numPlanets
+
+    def placeShips(self, player, ships):
+        if player not in self.ships.keys:
+            self.ships[player] = 0
+        self.ships[player] += ships
+
+    def removeShips(self, player, ships):
+        if player not in self.ships.keys:
+            raise "Trying to remove ships where there are none"
+        elif self.ships[player] < ships:
+            raise "Trying to remove ships when there are not enough"
+        else:
+            self.ships[player] -= ships
+
+   def numOfShips(self, player):
+       if player not in self.ships.keys:
+           return 0
+       else:
+           return self.ships[player]
+
 
 #
 #   Hex neighbor ordering
@@ -39,7 +60,18 @@ class Board:
         {2: self.init2}.get(numOfPlayers)()
 
     def init2(self):
+        #                (-1,0)     (0,0)     (1, 0)
         self.spaces = [[Space(2), Space(0), Space(2)]]
+
+    def addSpace(self, space, (x, y)):
+        # space already exists?
+        if findSpace(x, y):
+            raise "Trying to place new space where a space already exists (%d, %d)" % (x,y)
+        else:
+            pass
+
+    def findAdjacent(self, (x, y)):
+        pass
 
 class Player:
     def __init__(self, startingPlanets):
@@ -81,28 +113,50 @@ class Player:
          ActionCards.CORRUPTION: self.corruption}.get(card)(game)
 
     def explore(self, game):
+        # any ships next to an empty space?
+        # reveal the topmost hex and place it
+        # decide how many ships to move
+        # take planets cards and score them
+        # take the top cards and place them and ships
         pass
 
     def moveAttack(self, game):
-        pass
+        # any opponent ships in an adjacent space?
+        #   move ships to space
+        #   attack
+        # else
+        # any ships need to explore?
+        #   move ships closer to adjacent space
 
     def invade(self, game):
-        pass
+        # any ships in space with opponent planet?
+        #   pay invasion cost
+        #   remove opponent ships
+        #   place ships
 
     def defend(self, game):
-        pass
+        # any ships in space with planet?
+        #   move ships to planet
 
     def disband(self, game):
-        pass
+        # any ships on planets?
+        #   move ships to space
 
     def build(self, game):
-        pass
+        # have enough resources to build?
+        #   pick planet with highest build
+        #   take ships from pool and put them on planet
 
     def research(self, game):
         pass
 
     def produce(self, game):
-        pass
+        # have more energy than minerals?
+        #   find planet with most mineral production
+        #   produce from planet
+        # else
+        #   find planet with most energy production
+        #   produce from planet
 
     def trade(self, game):
         pass
@@ -123,7 +177,8 @@ class Player:
         pass
 
     def corruption(self, game):
-        pass
+        # have two influence?
+        #   steal to have equal energy and minerals
     
     def getActionQueue(self):
         return self.actionQueue
