@@ -46,7 +46,7 @@ class Space:
     def getNumPlanets(self):
         return self.numPlanets
 
-    def placeShips(self, player, ships):
+    def addShips(self, player, ships):
         if player not in self.ships.keys:
             self.ships[player] = 0
         self.ships[player] += ships
@@ -65,6 +65,19 @@ class Space:
        else:
            return self.ships[player]
 
+   def numOfEnemyShips(self, player):
+        totalShips = 0
+        for (spacePlayer, ships) in self.ships.items():
+            if spacePlayer != player:
+                totalShips += ships
+        return totalShips
+
+    def getEnemyShips(self, player):
+        ships = []
+        for (spacePlayer, ships) in self.ships.items():
+            if spacePlayer != player and ships > 0:
+                ships.append((spacePlayer, ships))
+        return ships
 class Board:
     def __init__(self, numOfPlayers):
         {2: self.init2}.get(numOfPlayers)()
@@ -149,23 +162,42 @@ class Player:
                         # decide how many ships to move
                         numShips = space.numShips(self)
                         if newSpace.getNumPlanets() > 0:
-                            planetCards = game.drawPlanetCards(min(newSpace.getNumPlanets(), numShips) + 1)
+                            planetCards = game.drawPlanetCards(newSpace.getNumPlanets() + 1)
+                            numPlanetsToKeep = min(newSpace.getNumPlanets(), numShips)
                             # take planets cards and score them
                             scores = {}
                             for planetCard in planetCards:
                                 scores[score(planetCard)] = planetCard
-                            scores = collections.OrderedDict(sorted(scores.items()))
-                        newSpace.addShips(self, space.numShips(self))
-                        space.removeShips(self, space.numShips(self))
+                            newPlanets = [p for (s, p) in scores[-numPlanetsToKeep:]]
+                            # move ships from the exploring space to the new planets
+                            for planetCard in newPlanets:
+                                space.removeShips(self, 1)
+                                planetCard.addShips(self, 1)
+                        else:
+                            # no planets to explore. Move one ship into the space
+                            space.removeShips(self, 1)
+                            newSpace.addShips(self, 1)
+                        # either moved ships or got planets. Nothing else to do
+                        break
 
-        # take the top cards and place them and ships
+    def resolveAttack(self, space, attacker, defender, attackerTactic, defenderTactic):
         pass
 
     def moveAttack(self, game):
         # any opponent ships in an adjacent space?
-        #   move ships to space
-        #   attack
-        # else
+        for (pos,space) in game.getBoard().getSpaces():
+            if space.numShips(self) > 0:
+                for adjSpace in game.getBoard().getAdjacent(pos):
+                    if adjSpace is not None and adjSpace.numOfEnemyShips(player) > 0:
+                        space.removeShips(self, 1)
+                        adjSpace.addShips(self, 1)
+                        (defender, defenderShips) = adjSpace.getEnemyShips()[0]
+                        defenderTactic = defender.chooseTactic(defenderShips)
+                        attackerTactic = self.cooseTactic(1)
+                        resolveAttack(adjSpace, self, defender, attackerTactic, defenderTactic)
+                        # combat resolved, nothing left to do
+                        return
+        # if we got here, then there was no combar
         # any ships need to explore?
         #   move ships closer to adjacent space
 
