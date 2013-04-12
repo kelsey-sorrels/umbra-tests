@@ -5,7 +5,7 @@ import time
 import collections
 import csv
 
-class Planet:
+class PlanetCard:
     def __init__(self, name, produceEnergy, produceMinerals, produceInfluence, buildShips,
             invadeEnergy, invadeMinerals, invadeInfluence):
         self.produceEnergy = produceEnergy
@@ -16,6 +16,27 @@ class Planet:
         self.invadeEnergy = invadeEnergy
         self.invadeMinerals = invadeMinerals
         self.invadeInfluence = invadeInfluence
+
+    def getProduceEnergy(self):
+        return self.produceEnergy
+
+    def getProduceMinerals(self):
+        return self.produceMinerals
+
+    def getProduceInfluence(self):
+        return self.produceInfluence
+
+    def getBuildShips(self):
+        return self.buildShips
+
+    def getInvadeEnergy(self):
+        return self.invadeEnergy
+
+    def getInvadeMinerals(self):
+        return self.invadeMinerals
+
+    def getInvadeInfluence(self):
+        return self.invadeInfluence
 
 class Space:
     def __init__(self, numPlanets):
@@ -44,34 +65,36 @@ class Space:
        else:
            return self.ships[player]
 
-
-#
-#   Hex neighbor ordering
-#
-#         0
-#      5  |  1
-#        \ /
-#        / \ 
-#      4  |  2
-#         3
-
 class Board:
     def __init__(self, numOfPlayers):
         {2: self.init2}.get(numOfPlayers)()
 
     def init2(self):
         #                (-1,0)     (0,0)     (1, 0)
-        self.spaces = [[Space(2), Space(0), Space(2)]]
+        self.spaces = {(-1,0):Space(2), (0,0):Space(0), (1,0):Space(2)}
 
-    def addSpace(self, space, (x, y)):
+    def getSpaces(self):
+        return self.spaces
+
+    def addSpace(self, space, pos):
         # space already exists?
-        if findSpace(x, y):
+        if findSpace(pos):
             raise "Trying to place new space where a space already exists (%d, %d)" % (x,y)
         else:
-            pass
+            self.spaces[pos] = space
 
+    def findSpace(self, pos):
+        if pos in self.spaces.keys:
+            return self.spaces[pos]
+        else:
+            return None
+        
     def findAdjacent(self, (x, y)):
-        pass
+        # 1 2
+        # 0 x 5
+        #   3 4
+        return [findSpace((x-1, y)), findSpace((x-1, y-1)), findSpace((x, y-1)),
+                findSpace((x, y+1)), findspace((x+1, y+1)), findspace((x+1, y))]
 
 class Player:
     def __init__(self, startingPlanets):
@@ -112,11 +135,29 @@ class Player:
          ActionCards.ELECTION: self.election,
          ActionCards.CORRUPTION: self.corruption}.get(card)(game)
 
+    def scorePlanet(self, planet):
+        return planet.getProduceEnergy() + planet.getProduceMinerals() * 0.7 - planet.getInvadeEnergy() - planet.getInvadeMinerals() - planet.getInvadeInfluence() * 1.5
+
     def explore(self, game):
         # any ships next to an empty space?
-        # reveal the topmost hex and place it
-        # decide how many ships to move
-        # take planets cards and score them
+        for (pos,space) in game.getBoard().getSpaces():
+            if space.numShips(self) > 0:
+                for space in game.getBoard().getAdjacent(pos):
+                    if space is None:
+                        # reveal the topmost hex and place it
+                        newSpace = game.drawSpace()
+                        # decide how many ships to move
+                        numShips = space.numShips(self)
+                        if newSpace.getNumPlanets() > 0:
+                            planetCards = game.drawPlanetCards(min(newSpace.getNumPlanets(), numShips) + 1)
+                            # take planets cards and score them
+                            scores = {}
+                            for planetCard in planetCards:
+                                scores[score(planetCard)] = planetCard
+                            scores = collections.OrderedDict(sorted(scores.items()))
+                        newSpace.addShips(self, space.numShips(self))
+                        space.removeShips(self, space.numShips(self))
+
         # take the top cards and place them and ships
         pass
 
@@ -203,7 +244,6 @@ class ActionCards:
     POLITICS = 13
     CORRUPTION = 14
 
-
 class Game:
     def __init__(self):
         self.actionCards = self.initActionCards()
@@ -214,6 +254,7 @@ class Game:
         self.players = [self.playerOne, Player([])]
         self.playerOrder = itertools.cycle(self.players)
         self.board = Board(len(self.players))
+        self.spaces = initSpaces()
         self.logRecord = []
 
     def initActionCards(self):
@@ -224,14 +265,14 @@ class Game:
                 ActionCards.POLITICS, ActionCards.CORRUPTION])
 
     def initPlanetCards(self):
-        planets = []
+        planetCards = []
         with open('data/planets.csv', 'rb') as csvfile:
             reader = csv.reader(csvfile)
             headerline = reader.next()
             for row in reader:
                 #name, produceEnergy, produceMinerals, produceInfluence, buildShips, invadeEnergy, invadeMinerals, invadeInfluence
-                planets.append(Planet(row[0], row[5], row[6], row[7], row[8], row[1], row[2], row[3]))
-        return planets
+                planetCards.append(PlanetCard(row[0], row[5], row[6], row[7], row[8], row[1], row[2], row[3]))
+        return planetCards
 
     def initTechnologyCards(self):
         return []
@@ -239,15 +280,24 @@ class Game:
     def initResolutionCards(self):
         return []
 
+    def initSpaces(self):
+        return []
+
     def log(self, msg):
         print(str(msg))
         self.logRecord.append(str(msg))
+
+    def getBoard(self):
+        return self.board
 
     def getLog(self):
         return '\n'.join(self.logRecord)
 
     def hasWinner(self):
         return False
+
+    def drawSpace(self):
+        return self.spaces.pop(0)
 
     def tick(self):
         if all([player.isActionQueueEmpty() for player in self.players]):
